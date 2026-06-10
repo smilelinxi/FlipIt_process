@@ -67,6 +67,9 @@
     <Compile Include="IniFile.cs" />
     <Compile Include="Location.cs" />
     <Compile Include="CurrentTimeScreen.cs" />
+    <Compile Include="DesktopClockForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="DisplayType.cs" />
     <Compile Include="FlipItSettings.cs" />
     <Compile Include="Int32Extensions.cs" />
@@ -151,11 +154,10 @@ rem Also try to install into system32 (needs admin; ignore failure so the build 
 copy /Y "$(TargetPath)" "%25SystemRoot%25\system32\$(TargetName).scr"
 exit /b 0</PostBuildEvent>
   </PropertyGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
+  <!-- Produce a double-clickable desktop-clock copy of the exe next to the build output. Done with the
+       MSBuild Copy task (not the batch PostBuildEvent) so the Chinese file name is written correctly. -->
   <Target Name="AfterBuild">
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(TargetDir)桌面时钟.exe" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).exe.config" DestinationFiles="$(TargetDir)桌面时钟.exe.config" Condition="Exists('$(TargetDir)$(TargetName).exe.config')" />
   </Target>
-  -->
 </Project>

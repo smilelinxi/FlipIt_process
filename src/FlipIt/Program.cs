@@ -79,6 +79,10 @@ namespace ScreenSaver
 					ShowScreenSaver(settings);
 					Application.Run();
 				}
+				else if (firstArgument == "/d")      // Desktop clock mode (windowed, minimisable)
+				{
+					Application.Run(new DesktopClockForm(settings));
+				}
 				else    // Undefined argument
 				{
 					MessageBox.Show("抱歉，命令行参数 “" + firstArgument +
@@ -86,10 +90,26 @@ namespace ScreenSaver
 						MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
 				}
 			}
-			else    // No arguments - treat like /c
+			else    // No arguments
 			{
-				Application.Run(new SettingsForm(settings));
+				// A copy of this exe named to mark it as the clock (e.g. 桌面时钟.exe) opens the desktop
+				// clock straight from a double-click; the original FlipIt.exe still opens settings.
+				if (IsDesktopClockExe())
+					Application.Run(new DesktopClockForm(settings));
+				else
+					Application.Run(new SettingsForm(settings));
 			}
+		}
+
+		/// <summary>
+		/// True when the running executable is named as the desktop-clock build (contains "clock" or
+		/// the Chinese "时钟"), so that double-clicking it launches the clock rather than the settings.
+		/// </summary>
+		private static bool IsDesktopClockExe()
+		{
+			var name = System.IO.Path.GetFileNameWithoutExtension(Application.ExecutablePath) ?? "";
+			return name.IndexOf("clock", StringComparison.OrdinalIgnoreCase) >= 0
+				|| name.IndexOf("时钟", StringComparison.Ordinal) >= 0;
 		}
 
 		/// <summary>

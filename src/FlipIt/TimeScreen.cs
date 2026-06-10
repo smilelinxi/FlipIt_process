@@ -107,7 +107,7 @@ namespace ScreenSaver
             return time.Hour >= 12 ? "PM" : "AM";
         }
 
-        internal void DisposeResources()
+        internal virtual void DisposeResources()
         {
             if (_bufferGraphics != null)
             {
