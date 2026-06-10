@@ -347,5 +347,29 @@ namespace ScreenSaver
             string[] names = { "日", "一", "二", "三", "四", "五", "六" };
             return "星期" + names[(int)now.DayOfWeek];
         }
+
+        // True while a card is part-way through a flip. The desktop clock uses this to stay completely
+        // idle (burning no CPU) except during the brief moments something is actually animating.
+        internal bool IsFlipActive(DateTime now)
+        {
+            if (!_flipAnimation)
+                return false;
+            var durationMs = FlipDurationSeconds * 1000;
+            if (_showSeconds)
+                return now.Millisecond < durationMs;                    // the seconds card flips every second
+            return now.Second == 0 && now.Millisecond < durationMs;     // only the minute/hour cards flip
+        }
+
+        internal override void DisposeResources()
+        {
+            _hoursFont?.Dispose();
+            _minutesFont?.Dispose();
+            _secondsFont?.Dispose();
+            _smallFont?.Dispose();
+            _dateFont?.Dispose();
+            _fontBrush?.Dispose();
+            _splitPen?.Dispose();
+            base.DisposeResources();
+        }
     }
 }
