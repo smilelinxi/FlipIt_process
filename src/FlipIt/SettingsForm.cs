@@ -43,6 +43,8 @@ namespace ScreenSaver
             _settings.SecondsScale = (int)secondsScaleNumericUpDown.Value;
             _settings.ShowDate = showDateCheckBox.Checked;
             _settings.FlipAnimation = flipAnimationCheckBox.Checked;
+            _settings.ShowWeather = showWeatherCheckBox.Checked;
+            _settings.ShowSystemInfo = showSystemInfoCheckBox.Checked;
             _settings.Save();
         }
 
@@ -91,6 +93,8 @@ namespace ScreenSaver
 
             showDateCheckBox.Checked = _settings.ShowDate;
             flipAnimationCheckBox.Checked = _settings.FlipAnimation;
+            showWeatherCheckBox.Checked = _settings.ShowWeather;
+            showSystemInfoCheckBox.Checked = _settings.ShowSystemInfo;
 
             scaleTrackBar.Value = _settings.Scale / 10;
 
@@ -116,6 +120,8 @@ namespace ScreenSaver
             secondsScaleNumericUpDown.ValueChanged += PreviewSettingChanged;
             showDateCheckBox.CheckedChanged += PreviewSettingChanged;
             flipAnimationCheckBox.CheckedChanged += PreviewSettingChanged;
+            showWeatherCheckBox.CheckedChanged += PreviewSettingChanged;
+            showSystemInfoCheckBox.CheckedChanged += PreviewSettingChanged;
 
             FormClosed += (s, e) =>
             {
@@ -142,17 +148,20 @@ namespace ScreenSaver
         private void RefreshPreview()
         {
             _previewScreen?.DisposeResources();
-            _previewScreen = new CurrentTimeScreen(
-                previewPanel,
-                display24hrRadioButton.Checked,
-                true, // preview mode: thin split line, looks better at small size
-                scaleTrackBar.Value * 10,
-                showSecondsCheckBox.Checked,
-                (int)hoursScaleNumericUpDown.Value,
-                (int)minutesScaleNumericUpDown.Value,
-                (int)secondsScaleNumericUpDown.Value,
-                flipAnimationCheckBox.Checked,
-                showDateCheckBox.Checked);
+            _previewScreen = new CurrentTimeScreen(previewPanel, new ClockRenderOptions
+            {
+                Display24HrTime = display24hrRadioButton.Checked,
+                IsPreviewMode = true, // preview mode: thin split line, looks better at small size
+                ScalePercent = scaleTrackBar.Value * 10,
+                ShowSeconds = showSecondsCheckBox.Checked,
+                HoursScalePercent = (int)hoursScaleNumericUpDown.Value,
+                MinutesScalePercent = (int)minutesScaleNumericUpDown.Value,
+                SecondsScalePercent = (int)secondsScaleNumericUpDown.Value,
+                FlipAnimation = flipAnimationCheckBox.Checked,
+                ShowDate = showDateCheckBox.Checked,
+                ShowWeather = showWeatherCheckBox.Checked,
+                ShowSystemInfo = showSystemInfoCheckBox.Checked,
+            });
 
             if (previewPanel.IsHandleCreated)
             {

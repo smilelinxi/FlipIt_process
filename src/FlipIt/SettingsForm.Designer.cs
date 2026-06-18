@@ -67,6 +67,8 @@
             this.secondsScaleNumericUpDown = new System.Windows.Forms.NumericUpDown();
             this.showDateCheckBox = new System.Windows.Forms.CheckBox();
             this.flipAnimationCheckBox = new System.Windows.Forms.CheckBox();
+            this.showWeatherCheckBox = new System.Windows.Forms.CheckBox();
+            this.showSystemInfoCheckBox = new System.Windows.Forms.CheckBox();
             this.previewSectionLabel = new System.Windows.Forms.Label();
             this.previewPanel = new System.Windows.Forms.Panel();
             this.panel1.SuspendLayout();
@@ -103,7 +105,7 @@
             // displayNothingRadioButton
             // 
             this.displayNothingRadioButton.AutoSize = true;
-            this.displayNothingRadioButton.Location = new System.Drawing.Point(120, 243);
+            this.displayNothingRadioButton.Location = new System.Drawing.Point(120, 273);
             this.displayNothingRadioButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.displayNothingRadioButton.Name = "displayNothingRadioButton";
             this.displayNothingRadioButton.Size = new System.Drawing.Size(73, 21);
@@ -116,7 +118,7 @@
             // displayCurrentTimeRadioButton
             // 
             this.displayCurrentTimeRadioButton.AutoSize = true;
-            this.displayCurrentTimeRadioButton.Location = new System.Drawing.Point(120, 272);
+            this.displayCurrentTimeRadioButton.Location = new System.Drawing.Point(120, 302);
             this.displayCurrentTimeRadioButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.displayCurrentTimeRadioButton.Name = "displayCurrentTimeRadioButton";
             this.displayCurrentTimeRadioButton.Size = new System.Drawing.Size(98, 21);
@@ -129,7 +131,7 @@
             // displayWorldTimesRadioButton
             // 
             this.displayWorldTimesRadioButton.AutoSize = true;
-            this.displayWorldTimesRadioButton.Location = new System.Drawing.Point(120, 301);
+            this.displayWorldTimesRadioButton.Location = new System.Drawing.Point(120, 331);
             this.displayWorldTimesRadioButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.displayWorldTimesRadioButton.Name = "displayWorldTimesRadioButton";
             this.displayWorldTimesRadioButton.Size = new System.Drawing.Size(99, 21);
@@ -146,7 +148,7 @@
             this.worldTimesListView.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;
             this.worldTimesListView.HideSelection = false;
             this.worldTimesListView.LabelEdit = true;
-            this.worldTimesListView.Location = new System.Drawing.Point(225, 301);
+            this.worldTimesListView.Location = new System.Drawing.Point(225, 331);
             this.worldTimesListView.MultiSelect = false;
             this.worldTimesListView.Name = "worldTimesListView";
             this.worldTimesListView.Size = new System.Drawing.Size(247, 145);
@@ -194,7 +196,7 @@
             // selectedScreenNameLabel
             // 
             this.selectedScreenNameLabel.AutoSize = true;
-            this.selectedScreenNameLabel.Location = new System.Drawing.Point(117, 213);
+            this.selectedScreenNameLabel.Location = new System.Drawing.Point(117, 243);
             this.selectedScreenNameLabel.Name = "selectedScreenNameLabel";
             this.selectedScreenNameLabel.Size = new System.Drawing.Size(47, 17);
             this.selectedScreenNameLabel.TabIndex = 6;
@@ -221,7 +223,7 @@
             // githubLinkLabel
             // 
             this.githubLinkLabel.AutoSize = true;
-            this.githubLinkLabel.Location = new System.Drawing.Point(165, 510);
+            this.githubLinkLabel.Location = new System.Drawing.Point(165, 540);
             this.githubLinkLabel.Name = "githubLinkLabel";
             this.githubLinkLabel.Size = new System.Drawing.Size(212, 17);
             this.githubLinkLabel.TabIndex = 15;
@@ -260,7 +262,7 @@
             // 
             this.label4.AutoSize = true;
             this.label4.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label4.Location = new System.Drawing.Point(16, 186);
+            this.label4.Location = new System.Drawing.Point(16, 216);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(54, 17);
             this.label4.TabIndex = 4;
@@ -269,7 +271,7 @@
             // addLocationButton
             // 
             this.addLocationButton.CausesValidation = false;
-            this.addLocationButton.Location = new System.Drawing.Point(478, 448);
+            this.addLocationButton.Location = new System.Drawing.Point(478, 478);
             this.addLocationButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.addLocationButton.Name = "addLocationButton";
             this.addLocationButton.Size = new System.Drawing.Size(87, 30);
@@ -281,7 +283,7 @@
             // removeLocationButton
             // 
             this.removeLocationButton.CausesValidation = false;
-            this.removeLocationButton.Location = new System.Drawing.Point(478, 373);
+            this.removeLocationButton.Location = new System.Drawing.Point(478, 403);
             this.removeLocationButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.removeLocationButton.Name = "removeLocationButton";
             this.removeLocationButton.Size = new System.Drawing.Size(87, 30);
@@ -293,7 +295,7 @@
             // editLocationButton
             // 
             this.editLocationButton.CausesValidation = false;
-            this.editLocationButton.Location = new System.Drawing.Point(478, 335);
+            this.editLocationButton.Location = new System.Drawing.Point(478, 365);
             this.editLocationButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.editLocationButton.Name = "editLocationButton";
             this.editLocationButton.Size = new System.Drawing.Size(87, 30);
@@ -308,7 +310,7 @@
             this.screensListBox.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
             this.screensListBox.FormattingEnabled = true;
             this.screensListBox.ItemHeight = 65;
-            this.screensListBox.Location = new System.Drawing.Point(19, 213);
+            this.screensListBox.Location = new System.Drawing.Point(19, 243);
             this.screensListBox.Name = "screensListBox";
             this.screensListBox.Size = new System.Drawing.Size(85, 264);
             this.screensListBox.TabIndex = 5;
@@ -319,7 +321,7 @@
             // 
             this.citySearchTextBox.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.Suggest;
             this.citySearchTextBox.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.CustomSource;
-            this.citySearchTextBox.Location = new System.Drawing.Point(225, 452);
+            this.citySearchTextBox.Location = new System.Drawing.Point(225, 482);
             this.citySearchTextBox.Name = "citySearchTextBox";
             this.citySearchTextBox.Size = new System.Drawing.Size(247, 25);
             this.citySearchTextBox.TabIndex = 13;
@@ -331,7 +333,7 @@
             // 
             this.versionLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.versionLabel.AutoSize = true;
-            this.versionLabel.Location = new System.Drawing.Point(484, 510);
+            this.versionLabel.Location = new System.Drawing.Point(484, 540);
             this.versionLabel.Name = "versionLabel";
             this.versionLabel.Size = new System.Drawing.Size(81, 17);
             this.versionLabel.TabIndex = 18;
@@ -517,11 +519,31 @@
             this.flipAnimationCheckBox.Text = "翻页动画";
             this.flipAnimationCheckBox.UseVisualStyleBackColor = true;
             //
+            // showWeatherCheckBox
+            //
+            this.showWeatherCheckBox.AutoSize = true;
+            this.showWeatherCheckBox.Location = new System.Drawing.Point(196, 191);
+            this.showWeatherCheckBox.Name = "showWeatherCheckBox";
+            this.showWeatherCheckBox.Size = new System.Drawing.Size(99, 21);
+            this.showWeatherCheckBox.TabIndex = 34;
+            this.showWeatherCheckBox.Text = "显示天气";
+            this.showWeatherCheckBox.UseVisualStyleBackColor = true;
+            //
+            // showSystemInfoCheckBox
+            //
+            this.showSystemInfoCheckBox.AutoSize = true;
+            this.showSystemInfoCheckBox.Location = new System.Drawing.Point(340, 191);
+            this.showSystemInfoCheckBox.Name = "showSystemInfoCheckBox";
+            this.showSystemInfoCheckBox.Size = new System.Drawing.Size(180, 21);
+            this.showSystemInfoCheckBox.TabIndex = 35;
+            this.showSystemInfoCheckBox.Text = "显示系统信息(CPU/内存)";
+            this.showSystemInfoCheckBox.UseVisualStyleBackColor = true;
+            //
             // previewSectionLabel
             //
             this.previewSectionLabel.AutoSize = true;
             this.previewSectionLabel.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.previewSectionLabel.Location = new System.Drawing.Point(16, 533);
+            this.previewSectionLabel.Location = new System.Drawing.Point(16, 563);
             this.previewSectionLabel.Name = "previewSectionLabel";
             this.previewSectionLabel.Size = new System.Drawing.Size(85, 17);
             this.previewSectionLabel.TabIndex = 32;
@@ -530,7 +552,7 @@
             // previewPanel
             //
             this.previewPanel.BackColor = System.Drawing.Color.Black;
-            this.previewPanel.Location = new System.Drawing.Point(16, 555);
+            this.previewPanel.Location = new System.Drawing.Point(16, 585);
             this.previewPanel.Name = "previewPanel";
             this.previewPanel.Size = new System.Drawing.Size(549, 185);
             this.previewPanel.TabIndex = 33;
@@ -539,12 +561,14 @@
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(581, 752);
+            this.ClientSize = new System.Drawing.Size(581, 782);
             this.Controls.Add(this.previewSectionLabel);
             this.Controls.Add(this.previewPanel);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.showDateCheckBox);
             this.Controls.Add(this.flipAnimationCheckBox);
+            this.Controls.Add(this.showWeatherCheckBox);
+            this.Controls.Add(this.showSystemInfoCheckBox);
             this.Controls.Add(this.boxSizeHeaderLabel);
             this.Controls.Add(this.hoursScaleNumericUpDown);
             this.Controls.Add(this.hoursScaleLabel);
@@ -631,6 +655,8 @@
         private System.Windows.Forms.NumericUpDown secondsScaleNumericUpDown;
         private System.Windows.Forms.CheckBox showDateCheckBox;
         private System.Windows.Forms.CheckBox flipAnimationCheckBox;
+        private System.Windows.Forms.CheckBox showWeatherCheckBox;
+        private System.Windows.Forms.CheckBox showSystemInfoCheckBox;
         private System.Windows.Forms.Label previewSectionLabel;
         private System.Windows.Forms.Panel previewPanel;
     }

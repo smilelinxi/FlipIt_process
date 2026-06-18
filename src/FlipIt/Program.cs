@@ -81,7 +81,8 @@ namespace ScreenSaver
 				}
 				else if (firstArgument == "/d")      // Desktop clock mode (windowed, minimisable)
 				{
-					Application.Run(new DesktopClockForm(settings));
+					// The clock loads its own settings (DesktopClock.ini), separate from the screensaver's.
+					Application.Run(new DesktopClockForm());
 				}
 				else    // Undefined argument
 				{
@@ -95,7 +96,7 @@ namespace ScreenSaver
 				// A copy of this exe named to mark it as the clock (e.g. 桌面时钟.exe) opens the desktop
 				// clock straight from a double-click; the original FlipIt.exe still opens settings.
 				if (IsDesktopClockExe())
-					Application.Run(new DesktopClockForm(settings));
+					Application.Run(new DesktopClockForm());
 				else
 					Application.Run(new SettingsForm(settings));
 			}
