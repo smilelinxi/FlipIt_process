@@ -23,10 +23,14 @@ namespace ScreenSaver
         // not directly to the form, so the screen never shows a half-drawn frame (no flicker).
         protected abstract void DrawCore();
 
+        // The colour the frame is wiped with before drawing. The desktop clock overrides this for its
+        // white / transparent background themes; everything else keeps the classic black.
+        protected virtual Color ClearColor => Color.Black;
+
         internal void Draw()
         {
             // Render the whole frame to the off-screen buffer first...
-            Gfx.Clear(Color.Black);
+            Gfx.Clear(ClearColor);
             DrawCore();
             // ...then present it to the form in a single blit. This is what removes the flicker
             // that was visible when each box was painted straight to the screen every second.

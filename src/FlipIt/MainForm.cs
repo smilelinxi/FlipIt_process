@@ -121,7 +121,9 @@ namespace ScreenSaver
 				_lastMinute = minute;
 				PaintTime();
 			}
-			if (ShowSeconds)
+			// Seconds and the CPU/memory readout are per-second content; the weather line should
+			// appear as soon as its background fetch completes rather than at the minute rollover.
+			if (ShowSeconds || (_settings != null && (_settings.ShowSystemInfo || _settings.ShowWeather)))
 			{
 				PaintTime();
 			}
@@ -142,7 +144,20 @@ namespace ScreenSaver
                 {
                     if (_isPreviewMode || _screenSetting.DisplayType == DisplayType.CurrentTime)
                     {
-                        _timeScreen = new CurrentTimeScreen(this, _settings.Display24HrTime, _isPreviewMode, _settings.Scale, _settings.ShowSeconds, _settings.HoursScale, _settings.MinutesScale, _settings.SecondsScale, _settings.FlipAnimation, _settings.ShowDate);
+                        _timeScreen = new CurrentTimeScreen(this, new ClockRenderOptions
+                        {
+                            Display24HrTime = _settings.Display24HrTime,
+                            IsPreviewMode = _isPreviewMode,
+                            ScalePercent = _settings.Scale,
+                            ShowSeconds = _settings.ShowSeconds,
+                            HoursScalePercent = _settings.HoursScale,
+                            MinutesScalePercent = _settings.MinutesScale,
+                            SecondsScalePercent = _settings.SecondsScale,
+                            FlipAnimation = _settings.FlipAnimation,
+                            ShowDate = _settings.ShowDate,
+                            ShowWeather = _settings.ShowWeather,
+                            ShowSystemInfo = _settings.ShowSystemInfo,
+                        });
 					}
                     else if (_screenSetting.DisplayType == DisplayType.WorldTime)
                     {

@@ -8,17 +8,24 @@ namespace ScreenSaver
 {
     internal class CurrentTimeScreen : TimeScreen
     {
-        private readonly bool _display24HourTime;
-        private readonly bool _isPreviewMode;
-        private readonly bool _showSeconds;
-        private readonly bool _flipAnimation;
-        private readonly bool _showDate;
+        private readonly ClockRenderOptions _options;
+
+        private bool Display24HourTime => _options.Display24HrTime;
+        private bool IsPreviewMode => _options.IsPreviewMode;
+        private bool ShowSeconds => _options.ShowSeconds;
+        private bool UseFlipAnimation => _options.FlipAnimation;
+        private bool ShowDate => _options.ShowDate;
+        private bool ShowInfoLine => _options.ShowWeather || _options.ShowSystemInfo;
 
         private const int SplitWidth = 4;
         private const double BoxSeparationPercent = 0.05; // ie. 5%
 
         // How long a single card takes to flip over.
         private const double FlipDurationSeconds = 0.28;
+
+        // Heights of the date / info strips relative to the (largest) box height.
+        private const double DateStripFactor = 0.30;
+        private const double InfoStripFactor = 0.22;
 
         // Size of each box relative to the "base" box size. 1.0 = full size, 0.72 = 72%.
         private readonly double _hoursScale;
@@ -30,6 +37,7 @@ namespace ScreenSaver
         private Font _secondsFont;
         private Font _smallFont;
         private Font _dateFont;
+        private Font _infoFont;
 
         private Font HoursFont => _hoursFont ?? (_hoursFont = MakeFont(_hoursBoxSize, 85));
         private Font MinutesFont => _minutesFont ?? (_minutesFont = MakeFont(_minutesBoxSize, 85));
@@ -37,14 +45,16 @@ namespace ScreenSaver
         private Font SmallFont => _smallFont ?? (_smallFont = MakeFont(_hoursBoxSize, 9));
         // The date is in Chinese, so it needs a system font with CJK glyphs (the embedded Helvetica has none).
         private Font DateFont => _dateFont ?? (_dateFont = new Font("Microsoft YaHei", _dateFontSize, FontStyle.Regular, GraphicsUnit.Pixel));
+        private Font InfoFont => _infoFont ?? (_infoFont = new Font("Microsoft YaHei", _infoFontSize, FontStyle.Regular, GraphicsUnit.Pixel));
 
         private Font MakeFont(int boxSize, int percent)
         {
             return new Font(FontFamily, boxSize.Percent(percent), FontStyle.Bold, GraphicsUnit.Pixel);
         }
 
-        private readonly Brush _fontBrush = new SolidBrush(Color.FromArgb(255, 183, 183, 183));
-        private readonly Pen _splitPen = new Pen(Color.Black, SplitWidth);
+        private readonly Brush _fontBrush;
+        private readonly Brush _infoBrush;   // slightly dimmer than the digits
+        private readonly Pen _splitPen;
 
         private readonly int _hoursBoxSize;
         private readonly int _minutesBoxSize;
@@ -55,28 +65,28 @@ namespace ScreenSaver
         private readonly Rectangle _minutesRect;
         private readonly Rectangle _secondsRect;
         private readonly Rectangle _dateRect;
+        private readonly Rectangle _infoRect;
         private readonly int _dateFontSize;
+        private readonly int _infoFontSize;
 
-        public CurrentTimeScreen(Control form, bool display24HourTime, bool isPreviewMode, int scalePercent,
-            bool showSeconds, int hoursScalePercent, int minutesScalePercent, int secondsScalePercent,
-            bool flipAnimation, bool showDate)
+        public CurrentTimeScreen(Control form, ClockRenderOptions options)
         {
-            _display24HourTime = display24HourTime;
-            _isPreviewMode = isPreviewMode;
-            _showSeconds = showSeconds;
-            _flipAnimation = flipAnimation;
-            _showDate = showDate;
+            _options = options;
             _form = form;
 
+            _fontBrush = new SolidBrush(options.Colors.Text);
+            _infoBrush = new SolidBrush(Color.FromArgb(200, options.Colors.Text));
+            _splitPen = new Pen(options.Colors.Background, SplitWidth);
+
             // Clamp each scale to a sensible range so a stray setting can't make a box vanish or overflow.
-            _hoursScale = ClampScale(hoursScalePercent);
-            _minutesScale = ClampScale(minutesScalePercent);
-            _secondsScale = ClampScale(secondsScalePercent);
+            _hoursScale = ClampScale(options.HoursScalePercent);
+            _minutesScale = ClampScale(options.MinutesScalePercent);
+            _secondsScale = ClampScale(options.SecondsScalePercent);
 
             // The border is between 5% and 30% of the screen
             //  * A scale of 0 = 5%
             //  * A scale of 100 = 30%
-            var borderPercent = (100 - scalePercent) / 4 + 5;
+            var borderPercent = (100 - options.ScalePercent) / 4 + 5;
             var borderW = form.Width.Percent(borderPercent);
             var borderH = form.Height.Percent(borderPercent);
             var remainingWidth = form.Width - (borderW * 2);
@@ -84,51 +94,63 @@ namespace ScreenSaver
 
             // Pick the largest "base" box size (the size a scale-1.0 box would be) that fits both the
             // available width (hours + minutes + seconds + separators) and the available height (the
-            // tallest box), leaving a slice at the bottom for the date.
-            var separators = _showSeconds ? BoxSeparationPercent * 2 : BoxSeparationPercent;
-            var widthParts = _hoursScale + _minutesScale + (_showSeconds ? _secondsScale : 0) + separators;
+            // tallest box plus the date / info strips below it).
+            var separators = ShowSeconds ? BoxSeparationPercent * 2 : BoxSeparationPercent;
+            var widthParts = _hoursScale + _minutesScale + (ShowSeconds ? _secondsScale : 0) + separators;
             var baseFromWidth = remainingWidth / widthParts;
 
-            var dateFraction = _showDate ? 0.16 : 0.0;
-            var clockHeightBudget = remainingHeight * (1 - dateFraction);
-            var maxScale = Math.Max(_hoursScale, Math.Max(_minutesScale, _showSeconds ? _secondsScale : 0));
-            var baseFromHeight = clockHeightBudget / maxScale;
+            var maxScale = Math.Max(_hoursScale, Math.Max(_minutesScale, ShowSeconds ? _secondsScale : 0));
+            var stripFactors = (ShowDate ? DateStripFactor : 0) + (ShowInfoLine ? InfoStripFactor : 0);
+            var baseFromHeight = remainingHeight / (maxScale * (1 + stripFactors));
 
             var baseSize = Math.Min(baseFromWidth, baseFromHeight);
 
             _hoursBoxSize = (int)Math.Round(baseSize * _hoursScale);
             _minutesBoxSize = (int)Math.Round(baseSize * _minutesScale);
-            _secondsBoxSize = _showSeconds ? (int)Math.Round(baseSize * _secondsScale) : 0;
+            _secondsBoxSize = ShowSeconds ? (int)Math.Round(baseSize * _secondsScale) : 0;
             _separatorWidth = (int)Math.Round(baseSize * BoxSeparationPercent);
 
-            // Lay the boxes out in a single row, all aligned along a common bottom line. The smaller
-            // seconds box therefore sits at the bottom-right, its base level with the hours/minutes boxes.
+            // Treat the clock row plus the date / info strips as one block and centre that whole block
+            // vertically, so the layout stays balanced whatever shape the window is stretched to
+            // (previously the date hugged the bottom edge, leaving a lopsided gap above).
             var maxBoxSize = Math.Max(_hoursBoxSize, Math.Max(_minutesBoxSize, _secondsBoxSize));
-            var rowTop = borderH + (int)((clockHeightBudget - maxBoxSize) / 2);
+            var dateHeight = ShowDate ? (int)Math.Round(maxBoxSize * DateStripFactor) : 0;
+            var infoHeight = ShowInfoLine ? (int)Math.Round(maxBoxSize * InfoStripFactor) : 0;
+            var blockHeight = maxBoxSize + dateHeight + infoHeight;
+
+            var rowTop = borderH + Math.Max(0, (remainingHeight - blockHeight) / 2);
             var rowBottom = rowTop + maxBoxSize;
 
+            // Boxes sit in a single row, all aligned along a common bottom line. The smaller seconds
+            // box therefore sits at the bottom-right, its base level with the hours/minutes boxes.
             var totalWidth = _hoursBoxSize + _separatorWidth + _minutesBoxSize
-                + (_showSeconds ? _separatorWidth + _secondsBoxSize : 0);
+                + (ShowSeconds ? _separatorWidth + _secondsBoxSize : 0);
             var startingX = (form.Width - totalWidth) / 2;
 
             _hoursRect = new Rectangle(startingX, rowBottom - _hoursBoxSize, _hoursBoxSize, _hoursBoxSize);
             var minutesX = startingX + _hoursBoxSize + _separatorWidth;
             _minutesRect = new Rectangle(minutesX, rowBottom - _minutesBoxSize, _minutesBoxSize, _minutesBoxSize);
 
-            if (_showSeconds)
+            if (ShowSeconds)
             {
                 var secondsX = _minutesRect.Right + _separatorWidth;
                 _secondsRect = new Rectangle(secondsX, rowBottom - _secondsBoxSize, _secondsBoxSize, _secondsBoxSize);
             }
 
-            if (_showDate)
+            if (ShowDate)
             {
-                var dateBottom = Math.Max(rowBottom + 8, form.Height - borderH);
-                _dateRect = Rectangle.FromLTRB(0, rowBottom, form.Width, dateBottom);
+                _dateRect = Rectangle.FromLTRB(0, rowBottom, form.Width, rowBottom + dateHeight);
                 // Size by the available height, but then shrink so the whole line fits the width on one
                 // row (otherwise a wide-but-short region produces a huge font that wraps onto two lines).
-                var byHeight = Math.Max(12, (int)((dateBottom - rowBottom) * 0.42));
+                var byHeight = Math.Max(12, (int)(dateHeight * 0.48));
                 _dateFontSize = FitDateFontSize(byHeight, form.Width);
+            }
+
+            if (ShowInfoLine)
+            {
+                var infoTop = rowBottom + dateHeight;
+                _infoRect = Rectangle.FromLTRB(0, infoTop, form.Width, infoTop + infoHeight);
+                _infoFontSize = Math.Max(11, (int)(infoHeight * 0.52));
             }
         }
 
@@ -166,6 +188,8 @@ namespace ScreenSaver
             return Properties.Resources.HelveticaLTStd_BoldCond;
         }
 
+        protected override Color ClearColor => _options.Colors.Background;
+
         protected override void DrawCore()
         {
             var now = SystemTime.Now;
@@ -173,11 +197,11 @@ namespace ScreenSaver
 
             // Hours
             var prevHour = now.AddHours(-1);
-            var hoursCur = _display24HourTime ? now.ToString("HH") : now.ToString("%h");
-            var hoursPrev = _display24HourTime ? prevHour.ToString("HH") : prevHour.ToString("%h");
+            var hoursCur = Display24HourTime ? now.ToString("HH") : now.ToString("%h");
+            var hoursPrev = Display24HourTime ? prevHour.ToString("HH") : prevHour.ToString("%h");
             var hoursMs = (now.Minute * 60 + now.Second) * 1000.0 + now.Millisecond;
             DrawFlipBox(_hoursRect, HoursFont, hoursCur, hoursPrev, Math.Min(1.0, hoursMs / durationMs));
-            if (!_display24HourTime)
+            if (!Display24HourTime)
                 DrawAmPm(_hoursRect, now);
 
             // Minutes
@@ -185,19 +209,22 @@ namespace ScreenSaver
             DrawFlipBox(_minutesRect, MinutesFont, now.ToString("mm"), now.AddMinutes(-1).ToString("mm"), Math.Min(1.0, minutesMs / durationMs));
 
             // Seconds (small box in the bottom-right corner of the minutes box)
-            if (_showSeconds)
+            if (ShowSeconds)
             {
                 DrawFlipBox(_secondsRect, SecondsFont, now.ToString("ss"), now.AddSeconds(-1).ToString("ss"), Math.Min(1.0, now.Millisecond / durationMs));
             }
 
-            if (_showDate)
+            if (ShowDate)
                 DrawDate(now);
+
+            if (ShowInfoLine)
+                DrawInfoLine();
         }
 
         private void DrawFlipBox(Rectangle rect, Font font, string currentText, string previousText, double progress)
         {
             // Static (no animation): just the current value, like the classic non-animated render.
-            if (!_flipAnimation || progress >= 1.0 || currentText == previousText)
+            if (!UseFlipAnimation || progress >= 1.0 || currentText == previousText)
             {
                 DrawCardContent(rect, font, currentText);
                 DrawSplit(rect);
@@ -291,7 +318,7 @@ namespace ScreenSaver
             // zero radius makes RoundedRectangle's AddArc throw "invalid parameter". Keep it at least 1.
             var radius = Math.Max(1, rect.Width / 20);
             using (var path = RoundedRectangle.Create(rect, radius))
-            using (var brush = new LinearGradientBrush(rect, BackColorTop, BackColorBottom, LinearGradientMode.Vertical))
+            using (var brush = new LinearGradientBrush(rect, _options.Colors.CardTop, _options.Colors.CardBottom, LinearGradientMode.Vertical))
             {
                 Gfx.FillPath(brush, path);
             }
@@ -299,7 +326,7 @@ namespace ScreenSaver
 
         private void DrawSplit(Rectangle rect)
         {
-            if (!_isPreviewMode)
+            if (!IsPreviewMode)
             {
                 var y = rect.Y + (rect.Height / 2) - (SplitWidth / 2);
                 Gfx.DrawLine(_splitPen, rect.Left, y, rect.Right, y);
@@ -307,7 +334,8 @@ namespace ScreenSaver
             else
             {
                 var y = rect.Y + (rect.Height / 2);
-                Gfx.DrawLine(Pens.Black, rect.Left, y, rect.Right, y);
+                using (var thinPen = new Pen(_options.Colors.Background))
+                    Gfx.DrawLine(thinPen, rect.Left, y, rect.Right, y);
             }
         }
 
@@ -342,6 +370,32 @@ namespace ScreenSaver
             Gfx.DrawString(sb.ToString(), DateFont, _fontBrush, _dateRect, stringFormat);
         }
 
+        // Weather and/or CPU+memory, centred on one line below the date.
+        private void DrawInfoLine()
+        {
+            var sb = new StringBuilder();
+            if (_options.ShowWeather)
+            {
+                var weather = WeatherService.GetDisplayText();
+                sb.Append(weather ?? "天气获取中…");
+            }
+            if (_options.ShowSystemInfo)
+            {
+                if (sb.Length > 0)
+                    sb.Append("    ");
+                sb.Append(SystemInfoService.GetDisplayText());
+            }
+            if (sb.Length == 0)
+                return;
+
+            var stringFormat = new StringFormat(StringFormatFlags.NoWrap)
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
+            };
+            Gfx.DrawString(sb.ToString(), InfoFont, _infoBrush, _infoRect, stringFormat);
+        }
+
         private static string WeekdayText(DateTime now)
         {
             string[] names = { "日", "一", "二", "三", "四", "五", "六" };
@@ -352,10 +406,10 @@ namespace ScreenSaver
         // idle (burning no CPU) except during the brief moments something is actually animating.
         internal bool IsFlipActive(DateTime now)
         {
-            if (!_flipAnimation)
+            if (!UseFlipAnimation)
                 return false;
             var durationMs = FlipDurationSeconds * 1000;
-            if (_showSeconds)
+            if (ShowSeconds)
                 return now.Millisecond < durationMs;                    // the seconds card flips every second
             return now.Second == 0 && now.Millisecond < durationMs;     // only the minute/hour cards flip
         }
@@ -367,7 +421,9 @@ namespace ScreenSaver
             _secondsFont?.Dispose();
             _smallFont?.Dispose();
             _dateFont?.Dispose();
+            _infoFont?.Dispose();
             _fontBrush?.Dispose();
+            _infoBrush?.Dispose();
             _splitPen?.Dispose();
             base.DisposeResources();
         }

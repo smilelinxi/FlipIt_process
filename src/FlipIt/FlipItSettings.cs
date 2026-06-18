@@ -31,6 +31,12 @@ namespace ScreenSaver
         /// <summary>Show the date (Gregorian + weekday + Chinese lunar) below the clock.</summary>
         public bool ShowDate { get; set; } = true;
 
+        /// <summary>Show the current weather (geolocated by IP) on the info line below the date.</summary>
+        public bool ShowWeather { get; set; }
+
+        /// <summary>Show CPU / memory usage on the info line below the date.</summary>
+        public bool ShowSystemInfo { get; set; }
+
         public List<ScreenSetting> ScreenSettings { get; set; } = new List<ScreenSetting>();
 
         public ScreenSetting GetScreen(string screenDeviceName)
@@ -58,6 +64,8 @@ namespace ScreenSaver
                 settings.SecondsScale = iniFile.GetInt("General", "SecondsScale", 72);
                 settings.FlipAnimation = iniFile.GetBool("General", "FlipAnimation", true);
                 settings.ShowDate = iniFile.GetBool("General", "ShowDate", true);
+                settings.ShowWeather = iniFile.GetBool("General", "ShowWeather", false);
+                settings.ShowSystemInfo = iniFile.GetBool("General", "ShowSystemInfo", false);
             }
             else
             {
@@ -131,6 +139,8 @@ namespace ScreenSaver
             iniFile.SetInt("General", "SecondsScale", SecondsScale);
             iniFile.SetBool("General", "FlipAnimation", FlipAnimation);
             iniFile.SetBool("General", "ShowDate", ShowDate);
+            iniFile.SetBool("General", "ShowWeather", ShowWeather);
+            iniFile.SetBool("General", "ShowSystemInfo", ShowSystemInfo);
 
             foreach (var screenSetting in ScreenSettings)
             {
