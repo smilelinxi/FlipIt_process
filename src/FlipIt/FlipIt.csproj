@@ -75,6 +75,7 @@
     <Compile Include="DesktopClockSettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ScreensaverLauncher.cs" />
     <Compile Include="WeatherService.cs" />
     <Compile Include="SystemInfoService.cs" />
     <Compile Include="DisplayType.cs" />

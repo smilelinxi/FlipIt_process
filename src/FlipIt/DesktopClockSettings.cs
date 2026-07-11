@@ -37,6 +37,17 @@ namespace ScreenSaver
         // Snap the window flush to a screen edge when dragged close to it.
         public bool EdgeSnap { get; set; } = true;
 
+        // Screensaver integration
+        // Global hotkeys: Ctrl+Alt+S starts the screensaver, Ctrl+Alt+P toggles click-through.
+        public bool HotkeysEnabled { get; set; } = true;
+        // Empty = auto-locate FlipIt.scr (exe folder, then the Windows system directories).
+        public string ScreensaverPath { get; set; } = "";
+        public SaverScheduleMode SaverScheduleMode { get; set; } = SaverScheduleMode.Off;
+        // Daily mode: the "HH:mm" the screensaver starts at.
+        public string SaverScheduleTime { get; set; } = "22:00";
+        // Interval mode: start the screensaver every this many minutes.
+        public int SaverIntervalMinutes { get; set; } = 30;
+
         private static string SettingsFolder => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlipIt");
 
@@ -70,6 +81,15 @@ namespace ScreenSaver
                 settings.DesktopBottom = ini.GetBool("General", "DesktopBottom", settings.DesktopBottom);
                 settings.ClickThrough = ini.GetBool("General", "ClickThrough", settings.ClickThrough);
                 settings.EdgeSnap = ini.GetBool("General", "EdgeSnap", settings.EdgeSnap);
+
+                settings.HotkeysEnabled = ini.GetBool("General", "HotkeysEnabled", settings.HotkeysEnabled);
+                settings.ScreensaverPath = ini.GetString("General", "SaverPath") ?? settings.ScreensaverPath;
+                settings.SaverScheduleMode = (SaverScheduleMode)ini.GetInt("General", "SaverScheduleMode", (int)settings.SaverScheduleMode);
+                if (settings.SaverScheduleMode < SaverScheduleMode.Off || settings.SaverScheduleMode > SaverScheduleMode.Interval)
+                    settings.SaverScheduleMode = SaverScheduleMode.Off;
+                settings.SaverScheduleTime = ini.GetString("General", "SaverScheduleTime") ?? settings.SaverScheduleTime;
+                settings.SaverIntervalMinutes = Math.Min(24 * 60, Math.Max(1,
+                    ini.GetInt("General", "SaverIntervalMinutes", settings.SaverIntervalMinutes)));
             }
             catch
             {
@@ -105,6 +125,11 @@ namespace ScreenSaver
                 ini.SetBool("General", "DesktopBottom", DesktopBottom);
                 ini.SetBool("General", "ClickThrough", ClickThrough);
                 ini.SetBool("General", "EdgeSnap", EdgeSnap);
+                ini.SetBool("General", "HotkeysEnabled", HotkeysEnabled);
+                ini.SetString("General", "SaverPath", ScreensaverPath ?? "");
+                ini.SetInt("General", "SaverScheduleMode", (int)SaverScheduleMode);
+                ini.SetString("General", "SaverScheduleTime", SaverScheduleTime ?? "");
+                ini.SetInt("General", "SaverIntervalMinutes", SaverIntervalMinutes);
                 ini.Save();
             }
             catch
@@ -112,6 +137,17 @@ namespace ScreenSaver
                 // Not being able to persist settings must never crash the clock.
             }
         }
+    }
+
+    /// <summary>
+    /// When (if ever) the clock starts the screensaver by itself.
+    /// The numeric values are stored in DesktopClock.ini and shown in this order in the settings UI.
+    /// </summary>
+    public enum SaverScheduleMode
+    {
+        Off = 0,        // never start automatically
+        Daily = 1,      // every day at SaverScheduleTime
+        Interval = 2,   // every SaverIntervalMinutes minutes
     }
 
     /// <summary>

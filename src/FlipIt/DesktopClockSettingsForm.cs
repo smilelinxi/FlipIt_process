@@ -35,6 +35,12 @@ namespace ScreenSaver
         private CheckBox _clickThroughCheck;
         private CheckBox _edgeSnapCheck;
         private CheckBox _autoStartCheck;
+        private CheckBox _hotkeysCheck;
+        private ComboBox _saverScheduleCombo;
+        private DateTimePicker _saverTimePicker;
+        private NumericUpDown _saverIntervalUpDown;
+        private Label _saverIntervalLabel;
+        private TextBox _saverPathText;
 
         public DesktopClockSettingsForm(DesktopClockSettings settings, Action applyCallback, Action resetPosition)
         {
@@ -146,6 +152,69 @@ namespace ScreenSaver
             Controls.Add(resetButton);
             y += 44;
 
+            // --- 屏幕保护 ---
+            y = AddSectionLabel("屏幕保护", left, y);
+            _hotkeysCheck = AddCheck("启用全局快捷键", indent, y);
+            var hotkeyHint = new Label
+            {
+                Text = "（Ctrl+Alt+S 启动屏保 / Ctrl+Alt+P 鼠标穿透）",
+                Location = new Point(indent + 125, y + 2),
+                AutoSize = true,
+                ForeColor = SystemColors.GrayText,
+            };
+            Controls.Add(hotkeyHint);
+            y += 28;
+
+            var scheduleLabel = new Label { Text = "定时启动：", Location = new Point(indent, y + 4), AutoSize = true };
+            _saverScheduleCombo = new ComboBox
+            {
+                Location = new Point(indent + 80, y),
+                Width = 90,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+            };
+            // Item order must match the SaverScheduleMode enum values.
+            _saverScheduleCombo.Items.AddRange(new object[] { "关闭", "每天定时", "按间隔" });
+            Controls.Add(scheduleLabel);
+            Controls.Add(_saverScheduleCombo);
+
+            // The daily time and the interval share the same spot; only the one matching the selected
+            // mode is visible.
+            _saverTimePicker = new DateTimePicker
+            {
+                Location = new Point(indent + 180, y),
+                Width = 70,
+                Format = DateTimePickerFormat.Custom,
+                CustomFormat = "HH:mm",
+                ShowUpDown = true,
+            };
+            Controls.Add(_saverTimePicker);
+
+            _saverIntervalUpDown = new NumericUpDown
+            {
+                Location = new Point(indent + 180, y),
+                Width = 60,
+                Minimum = 1, Maximum = 1440, Value = 30,
+            };
+            _saverIntervalLabel = new Label { Text = "分钟", Location = new Point(indent + 246, y + 4), AutoSize = true };
+            Controls.Add(_saverIntervalUpDown);
+            Controls.Add(_saverIntervalLabel);
+            _saverScheduleCombo.SelectedIndexChanged += (s, e) => UpdateSaverScheduleControls();
+            y += 32;
+
+            var saverPathLabel = new Label { Text = "屏保程序：", Location = new Point(indent, y + 4), AutoSize = true };
+            _saverPathText = new TextBox { Location = new Point(indent + 80, y), Width = 160 };
+            var saverPathHint = new Label
+            {
+                Text = "（留空自动查找 FlipIt.scr）",
+                Location = new Point(indent + 248, y + 4),
+                AutoSize = true,
+                ForeColor = SystemColors.GrayText,
+            };
+            Controls.Add(saverPathLabel);
+            Controls.Add(_saverPathText);
+            Controls.Add(saverPathHint);
+            y += 36;
+
             // --- bottom buttons ---
             var okButton = new Button { Text = "确定", Size = new Size(80, 28) };
             var cancelButton = new Button { Text = "取消", Size = new Size(80, 28), DialogResult = DialogResult.Cancel };
@@ -218,6 +287,26 @@ namespace ScreenSaver
             _clickThroughCheck.Checked = _settings.ClickThrough;
             _edgeSnapCheck.Checked = _settings.EdgeSnap;
             _autoStartCheck.Checked = AutoStart.IsEnabled();
+
+            _hotkeysCheck.Checked = _settings.HotkeysEnabled;
+            _saverScheduleCombo.SelectedIndex = Math.Min(_saverScheduleCombo.Items.Count - 1,
+                Math.Max(0, (int)_settings.SaverScheduleMode));
+            TimeSpan scheduleTime;
+            if (!TimeSpan.TryParse(_settings.SaverScheduleTime, out scheduleTime)
+                || scheduleTime < TimeSpan.Zero || scheduleTime >= TimeSpan.FromDays(1))
+                scheduleTime = new TimeSpan(22, 0, 0);
+            _saverTimePicker.Value = DateTime.Today + scheduleTime;
+            _saverIntervalUpDown.Value = ClampToRange(_saverIntervalUpDown, _settings.SaverIntervalMinutes);
+            _saverPathText.Text = _settings.ScreensaverPath ?? "";
+            UpdateSaverScheduleControls();
+        }
+
+        private void UpdateSaverScheduleControls()
+        {
+            var mode = (SaverScheduleMode)Math.Max(0, _saverScheduleCombo.SelectedIndex);
+            _saverTimePicker.Visible = mode == SaverScheduleMode.Daily;
+            _saverIntervalUpDown.Visible = mode == SaverScheduleMode.Interval;
+            _saverIntervalLabel.Visible = mode == SaverScheduleMode.Interval;
         }
 
         private void Apply()
@@ -239,6 +328,12 @@ namespace ScreenSaver
             _settings.ClickThrough = _clickThroughCheck.Checked;
             _settings.EdgeSnap = _edgeSnapCheck.Checked;
             AutoStart.SetEnabled(_autoStartCheck.Checked);
+
+            _settings.HotkeysEnabled = _hotkeysCheck.Checked;
+            _settings.SaverScheduleMode = (SaverScheduleMode)Math.Max(0, _saverScheduleCombo.SelectedIndex);
+            _settings.SaverScheduleTime = _saverTimePicker.Value.ToString("HH:mm");
+            _settings.SaverIntervalMinutes = (int)_saverIntervalUpDown.Value;
+            _settings.ScreensaverPath = _saverPathText.Text.Trim();
 
             _applyCallback?.Invoke();   // saves to DesktopClock.ini and refreshes the clock window
         }

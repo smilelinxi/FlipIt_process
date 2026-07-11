@@ -18,6 +18,11 @@ namespace ScreenSaver
     /// behaviours: stay on top, pin to the desktop bottom (under all other windows), click-through,
     /// transparent / white / black / follow-system background, autostart with Windows.
     ///
+    /// It also fronts the FlipIt screensaver: Ctrl+Alt+S (global) or the tray menu starts FlipIt.scr
+    /// immediately, an optional schedule (daily at a set time, or every N minutes) starts it
+    /// automatically, and Ctrl+Alt+P (global) toggles click-through — the only mouse-free way back
+    /// once the window ignores the mouse.
+    ///
     /// Kept deliberately lightweight: when the flip animation is off it only repaints when the
     /// displayed value actually changes. When the animation is on the timer wakes at frame-rate, but a
     /// frame is only *drawn* during the &lt;0.3s a card is physically flipping (see
@@ -33,6 +38,12 @@ namespace ScreenSaver
         private CurrentTimeScreen _screen;
         private ClockColors _colors;
         private readonly Timer _timer = new Timer();
+
+        // Drives the screensaver schedule. Separate from _timer because that one is stopped while the
+        // clock is hidden in the tray, and the schedule must keep firing then.
+        private readonly Timer _saverTimer = new Timer();
+        private DateTime _nextSaverDue = DateTime.MaxValue;
+
         private int _lastSecond = -1;
         private int _lastMinute = -1;
         private string _lastWeather;
@@ -79,7 +90,7 @@ namespace ScreenSaver
             BuildContextMenu();
             ApplyAppearance();
 
-            Load += (s, e) => { SetupTrayIcon(); ApplyWindowBehaviour(); PaintTime(); };
+            Load += (s, e) => { SetupTrayIcon(); ApplyWindowBehaviour(); ApplyHotkeys(); PaintTime(); };
             Paint += (s, e) => PaintTime();
             ResizeEnd += (s, e) => RebuildForCurrentSize();   // fires once, when the user lets go of the edge
             Resize += DesktopClockForm_Resize;                // catches restore-from-minimised
@@ -91,6 +102,11 @@ namespace ScreenSaver
             _timer.Tick += Tick;
             _timer.Interval = TimerInterval();
             _timer.Start();
+
+            UpdateSaverSchedule();
+            _saverTimer.Tick += SaverTimerTick;
+            _saverTimer.Interval = 15000;   // schedule granularity; cheap enough to always run
+            _saverTimer.Start();
         }
 
         // 16ms (~60fps wake) only when the flip animation can run; otherwise a slow, cheap tick that is
@@ -118,9 +134,24 @@ namespace ScreenSaver
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TRANSPARENT = 0x20;
         private const int WS_EX_LAYERED = 0x80000;
+
+        private const int WM_HOTKEY = 0x0312;
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_NOREPEAT = 0x4000;
+        // Arbitrary ids, only need to be unique within this window.
+        private const int HotkeyIdStartSaver = 1;        // Ctrl+Alt+S
+        private const int HotkeyIdToggleClickThrough = 2; // Ctrl+Alt+P
+        private bool _hotkeysRegistered;
 
         private static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
         private const uint SWP_NOSIZE = 0x0001;
@@ -202,6 +233,21 @@ namespace ScreenSaver
                     Marshal.StructureToPtr(rc, m.LParam, false);
                 m.Result = (IntPtr)1;
                 return;
+            }
+
+            // Global hotkeys (they arrive even while another application has the focus, and — unlike
+            // KeyDown — even while this window is click-through or hidden in the tray).
+            if (m.Msg == WM_HOTKEY)
+            {
+                switch ((int)m.WParam)
+                {
+                    case HotkeyIdStartSaver:
+                        StartScreensaver();
+                        return;
+                    case HotkeyIdToggleClickThrough:
+                        ToggleClickThroughByHotkey();
+                        return;
+                }
             }
 
             if (m.Msg == WM_NCHITTEST)
@@ -288,6 +334,93 @@ namespace ScreenSaver
             SetClickThrough(_settings.ClickThrough);
             if (_settings.DesktopBottom && IsHandleCreated)
                 SetWindowPos(Handle, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+
+        #endregion
+
+        #region Screensaver (global hotkeys + schedule)
+
+        // (Re-)register the global hotkeys to match the current setting. Always unregister first so
+        // toggling the setting off actually releases the keys for other applications.
+        private void ApplyHotkeys()
+        {
+            if (!IsHandleCreated)
+                return;
+
+            if (_hotkeysRegistered)
+            {
+                UnregisterHotKey(Handle, HotkeyIdStartSaver);
+                UnregisterHotKey(Handle, HotkeyIdToggleClickThrough);
+                _hotkeysRegistered = false;
+            }
+
+            if (!_settings.HotkeysEnabled)
+                return;
+
+            var saverOk = RegisterHotKey(Handle, HotkeyIdStartSaver,
+                MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (uint)Keys.S);
+            var toggleOk = RegisterHotKey(Handle, HotkeyIdToggleClickThrough,
+                MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (uint)Keys.P);
+            _hotkeysRegistered = saverOk || toggleOk;
+
+            // Registration fails when another program already owns the combination.
+            if (!saverOk || !toggleOk)
+                _trayIcon?.ShowBalloonTip(3000, "FlipIt 桌面时钟",
+                    "部分全局快捷键注册失败（可能被其他程序占用）：" +
+                    (saverOk ? "" : " Ctrl+Alt+S") + (toggleOk ? "" : " Ctrl+Alt+P"),
+                    ToolTipIcon.Warning);
+        }
+
+        private void StartScreensaver()
+        {
+            if (!ScreensaverLauncher.Start(_settings.ScreensaverPath))
+                _trayIcon?.ShowBalloonTip(3000, "FlipIt 桌面时钟",
+                    "启动屏幕保护失败：未找到可用的 FlipIt.scr。", ToolTipIcon.Warning);
+        }
+
+        // The whole point of the hotkey: click-through can be turned *off* again without the mouse,
+        // because a click-through window cannot be clicked to reach its context menu.
+        private void ToggleClickThroughByHotkey()
+        {
+            _settings.ClickThrough = !_settings.ClickThrough;
+            SaveAndApply();
+            _trayIcon?.ShowBalloonTip(2000, "FlipIt 桌面时钟",
+                _settings.ClickThrough ? "鼠标穿透已开启（Ctrl+Alt+P 可再次关闭）" : "鼠标穿透已关闭",
+                ToolTipIcon.Info);
+        }
+
+        private void UpdateSaverSchedule()
+        {
+            _nextSaverDue = ComputeNextSaverTime(SystemTime.Now);
+        }
+
+        private DateTime ComputeNextSaverTime(DateTime from)
+        {
+            switch (_settings.SaverScheduleMode)
+            {
+                case SaverScheduleMode.Daily:
+                    TimeSpan timeOfDay;
+                    if (!TimeSpan.TryParse(_settings.SaverScheduleTime, out timeOfDay)
+                        || timeOfDay < TimeSpan.Zero || timeOfDay >= TimeSpan.FromDays(1))
+                        return DateTime.MaxValue;   // unparseable time: schedule silently off
+                    var due = from.Date + timeOfDay;
+                    return due > from ? due : due.AddDays(1);
+
+                case SaverScheduleMode.Interval:
+                    return from.AddMinutes(Math.Max(1, _settings.SaverIntervalMinutes));
+
+                default:
+                    return DateTime.MaxValue;
+            }
+        }
+
+        private void SaverTimerTick(object sender, EventArgs e)
+        {
+            if (SystemTime.Now < _nextSaverDue)
+                return;
+            // Move the schedule on *before* launching, so a failing launch cannot re-fire every tick.
+            _nextSaverDue = ComputeNextSaverTime(SystemTime.Now);
+            StartScreensaver();
         }
 
         #endregion
@@ -441,6 +574,12 @@ namespace ScreenSaver
 
         private void DesktopClockForm_FormClosed(object sender, FormClosedEventArgs e)
         {
+            if (_hotkeysRegistered)
+            {
+                UnregisterHotKey(Handle, HotkeyIdStartSaver);
+                UnregisterHotKey(Handle, HotkeyIdToggleClickThrough);
+                _hotkeysRegistered = false;
+            }
             if (_trayIcon != null)
             {
                 _trayIcon.Visible = false;   // remove it from the tray immediately
@@ -448,6 +587,7 @@ namespace ScreenSaver
             }
             _screen?.DisposeResources();
             _timer.Dispose();
+            _saverTimer.Dispose();
         }
 
         #region Context menu
@@ -522,6 +662,15 @@ namespace ScreenSaver
 
             _menu.Items.Add(new ToolStripSeparator());
 
+            var startSaverItem = new ToolStripMenuItem("立即启动屏保")
+            {
+                ShortcutKeyDisplayString = "Ctrl+Alt+S",
+            };
+            startSaverItem.Click += (s, e) => StartScreensaver();
+            _menu.Items.Add(startSaverItem);
+
+            _menu.Items.Add(new ToolStripSeparator());
+
             _autoStartItem = new ToolStripMenuItem("开机自启动") { CheckOnClick = true };
             _autoStartItem.CheckedChanged += (s, e) =>
             {
@@ -568,6 +717,8 @@ namespace ScreenSaver
             _timer.Interval = TimerInterval();
             ApplyAppearance();
             ApplyWindowBehaviour();
+            ApplyHotkeys();
+            UpdateSaverSchedule();
             SyncMenuChecks();
         }
 
